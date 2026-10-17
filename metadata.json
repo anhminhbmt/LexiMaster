@@ -1,0 +1,6 @@
+{
+  "name": "LexiMaster - Học & Ôn Tập Từ Vựng Tiếng Anh",
+  "description": "Ứng dụng EdTech tương tác ôn tập từ vựng tiếng Anh với 4 chế độ kiểm tra thông minh, nhập liệu linh hoạt và trích xuất tài liệu thông minh.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
