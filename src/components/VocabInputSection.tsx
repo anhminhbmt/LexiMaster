@@ -29,6 +29,7 @@ import { parseVocabText } from '../utils/parser.ts';
 import { parseUploadedFile } from '../utils/fileExtractor.ts';
 import { speakWord, speakWordSequence, stopSpeaking } from '../utils/sound.ts';
 import { createInitialVocabList, ALL_TOPIC_NAMES } from '../data/starterVocab.ts';
+import { getPhonetic } from '../utils/phonetics.ts';
 
 interface VocabInputSectionProps {
   vocabList: VocabItem[];
@@ -187,6 +188,7 @@ export const VocabInputSection: React.FC<VocabInputSectionProps> = ({
       id: `vocab-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       word,
       meaning,
+      phonetic: getPhonetic(word),
       topic: topicName,
       example: newExample.trim() || undefined,
       createdAt: Date.now(),
@@ -219,6 +221,7 @@ export const VocabInputSection: React.FC<VocabInputSectionProps> = ({
       id: `vocab-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
       word: pair.word,
       meaning: pair.meaning,
+      phonetic: getPhonetic(pair.word, pair.phonetic),
       topic: pair.topic || bulkTopic.trim() || 'Từ vựng tự thêm',
       createdAt: Date.now() - idx,
       stats: { correctCount: 0, wrongCount: 0 },
@@ -943,12 +946,17 @@ export const VocabInputSection: React.FC<VocabInputSectionProps> = ({
                               <span className="hidden sm:inline">Đọc</span>
                             </button>
 
-                            <span
+                            <div
                               onClick={() => handleSpeakSingleWord(item)}
-                              className="font-bold text-slate-900 group-hover:text-indigo-700 cursor-pointer transition-colors"
+                              className="cursor-pointer min-w-0"
                             >
-                              {item.word}
-                            </span>
+                              <div className="font-bold text-slate-900 group-hover:text-indigo-700 transition-colors">
+                                {item.word}
+                              </div>
+                              <div className="text-xs font-mono text-indigo-600/90 font-normal">
+                                {getPhonetic(item.word, item.phonetic)}
+                              </div>
+                            </div>
                           </div>
                         )}
                       </td>

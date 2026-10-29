@@ -27,6 +27,7 @@ import {
   playMatchClick, 
   speakWord 
 } from '../utils/sound.ts';
+import { getPhonetic } from '../utils/phonetics.ts';
 
 interface QuizPlayerProps {
   mode: QuizMode;
@@ -77,7 +78,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
 
   // Matching Question state
-  const [matchingWords, setMatchingWords] = useState<Array<{ id: string; text: string }>>([]);
+  const [matchingWords, setMatchingWords] = useState<Array<{ id: string; text: string; phonetic: string }>>([]);
   const [matchingMeanings, setMatchingMeanings] = useState<Array<{ id: string; text: string }>>([]);
   const [selectedWordId, setSelectedWordId] = useState<string | null>(null);
   const [selectedMeaningId, setSelectedMeaningId] = useState<string | null>(null);
@@ -111,7 +112,15 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
 
     if (currentQ.type === 'matching' && currentQ.matchingItems) {
       const qItems = currentQ.matchingItems;
-      setMatchingWords(shuffleArray(qItems.map(i => ({ id: i.id, text: i.word }))));
+      setMatchingWords(
+        shuffleArray(
+          qItems.map(i => ({
+            id: i.id,
+            text: i.word,
+            phonetic: getPhonetic(i.word, i.phonetic),
+          }))
+        )
+      );
       setMatchingMeanings(shuffleArray(qItems.map(i => ({ id: i.id, text: i.meaning }))));
       setMatchedIds(new Set());
       setSelectedWordId(null);
@@ -507,22 +516,25 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
             ) : (
               <div className="space-y-4 animate-in fade-in zoom-in-95 duration-200">
                 {isAnswerCorrect ? (
-                  <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-center space-y-1">
+                  <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-center space-y-1.5">
                     <div className="flex items-center justify-center gap-2 text-emerald-700 font-extrabold text-base">
                       <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                       <span>Chính xác tuyệt vời!</span>
                     </div>
-                    <div className="flex items-center justify-center gap-2 text-emerald-900 font-bold text-lg">
+                    <div className="flex items-center justify-center gap-2 text-emerald-950 font-black text-xl">
                       <span>{currentItem.word}</span>
                       <button
                         type="button"
                         onClick={() => speakWord(currentItem.word)}
                         title="Nghe phát âm"
-                        className="px-2 py-1 rounded-lg bg-emerald-100 text-emerald-800 hover:bg-emerald-200 text-xs flex items-center gap-1"
+                        className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 hover:bg-emerald-200 text-xs font-bold flex items-center gap-1"
                       >
                         <Volume2 className="w-4 h-4" />
                         <span>Đọc</span>
                       </button>
+                    </div>
+                    <div className="text-sm font-mono font-semibold text-emerald-700 bg-emerald-100/70 inline-block px-3 py-0.5 rounded-lg">
+                      Phiên âm: {getPhonetic(currentItem.word, currentItem.phonetic)}
                     </div>
                   </div>
                 ) : (
@@ -545,6 +557,9 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
                         <Volume2 className="w-4 h-4" />
                         <span>Đọc</span>
                       </button>
+                    </div>
+                    <div className="text-sm font-mono font-semibold text-rose-700 bg-rose-100/80 inline-block px-3 py-0.5 rounded-lg">
+                      Phiên âm: {getPhonetic(currentItem.word, currentItem.phonetic)}
                     </div>
                   </div>
                 )}
@@ -584,6 +599,11 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
                 <Volume2 className="w-4 h-4" />
                 <span>Nghe phát âm</span>
               </button>
+            </div>
+            <div>
+              <span className="inline-block px-3.5 py-1 rounded-xl bg-slate-100 text-indigo-700 font-mono text-sm sm:text-base font-semibold border border-slate-200">
+                {getPhonetic(currentItem.word, currentItem.phonetic)}
+              </span>
             </div>
           </div>
 
@@ -699,7 +719,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
                   btnStyle = 'border-emerald-500 bg-emerald-50 text-emerald-900 ring-2 ring-emerald-400 font-extrabold';
                   badgeStyle = 'bg-emerald-600 text-white';
                 } else if (isSelected) {
-                  btnStyle = 'border-rose-500 bg-rose-50 text-rose-900 ring-2 ring-rose-400 line-through';
+                  btnStyle = 'border-rose-500 bg-rose-50 text-rose-900 ring-2 ring-rose-400';
                   badgeStyle = 'bg-rose-600 text-white';
                 } else {
                   btnStyle = 'border-slate-200 bg-slate-50 text-slate-400 opacity-60';
@@ -720,7 +740,14 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
                     <span className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${badgeStyle}`}>
                       {letter}
                     </span>
-                    <span className="font-semibold text-sm sm:text-base flex-1 truncate">{opt}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className={`font-semibold text-sm sm:text-base truncate ${hasSubmitted && isSelected && !isCorrectOpt ? 'line-through' : ''}`}>
+                        {opt}
+                      </div>
+                      <div className="text-xs font-mono text-indigo-600/90 font-normal truncate">
+                        {getPhonetic(opt)}
+                      </div>
+                    </div>
                   </button>
 
                   <button
@@ -747,7 +774,43 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
           </div>
 
           {hasSubmitted && (
-            <div className="max-w-lg mx-auto pt-2 animate-in fade-in duration-200">
+            <div className="max-w-lg mx-auto pt-2 space-y-3 animate-in fade-in duration-200">
+              <div
+                className={`p-4 rounded-2xl border text-center space-y-1.5 ${
+                  isAnswerCorrect
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                    : 'bg-rose-50 border-rose-200 text-rose-900'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2 font-extrabold text-sm sm:text-base">
+                  {isAnswerCorrect ? (
+                    <>
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                      <span className="text-emerald-700">Chính xác!</span>
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="w-5 h-5 text-rose-600" />
+                      <span className="text-rose-700">Đáp án đúng là:</span>
+                    </>
+                  )}
+                </div>
+                <div className="flex items-center justify-center gap-2 font-black text-lg sm:text-xl">
+                  <span>{currentItem.word}</span>
+                  <button
+                    type="button"
+                    onClick={() => speakWord(currentItem.word)}
+                    className="px-2.5 py-1 rounded-lg bg-white/80 hover:bg-white text-indigo-700 text-xs font-bold flex items-center gap-1 border border-slate-200"
+                  >
+                    <Volume2 className="w-3.5 h-3.5" />
+                    <span>Đọc</span>
+                  </button>
+                </div>
+                <div className="text-sm font-mono font-semibold text-indigo-700 bg-white/80 inline-block px-3 py-0.5 rounded-lg border border-indigo-100">
+                  Phiên âm: {getPhonetic(currentItem.word, currentItem.phonetic)}
+                </div>
+              </div>
+
               <button
                 type="button"
                 onClick={handleNextQuestion}
@@ -811,9 +874,12 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
                         type="button"
                         onClick={() => handleWordClick(item.id)}
                         disabled={isMatched || hasSubmitted}
-                        className="flex-1 text-left focus:outline-none disabled:cursor-default"
+                        className="flex-1 text-left focus:outline-none disabled:cursor-default min-w-0"
                       >
-                        {item.text}
+                        <div className="font-bold text-sm text-slate-900">{item.text}</div>
+                        <div className="text-xs font-mono text-indigo-600 font-normal mt-0.5">
+                          {item.phonetic}
+                        </div>
                       </button>
                       {isMatched ? (
                         <Check className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -875,9 +941,33 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
 
           {/* If all pairs matched in this question */}
           {hasSubmitted && (
-            <div className="pt-2 max-w-md mx-auto space-y-3 animate-in fade-in duration-200">
-              <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-center text-xs font-bold text-emerald-800">
-                ✓ Hoàn thành nối tất cả các cặp từ trong câu này!
+            <div className="pt-2 space-y-3 animate-in fade-in duration-200">
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-2.5">
+                <div className="text-center text-xs sm:text-sm font-extrabold text-emerald-800">
+                  ✓ Kết quả các cặp từ đã nối (kèm phiên âm):
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {(currentQ.matchingItems || []).map(mItem => (
+                    <div
+                      key={mItem.id}
+                      onClick={() => speakWord(mItem.word)}
+                      className="p-2.5 rounded-xl bg-white border border-emerald-200/80 flex items-center justify-between gap-2 cursor-pointer hover:border-emerald-400 transition-colors"
+                    >
+                      <div className="min-w-0">
+                        <div className="font-bold text-xs sm:text-sm text-slate-900 truncate">
+                          {mItem.word}
+                        </div>
+                        <div className="text-xs font-mono text-indigo-600 font-medium">
+                          {getPhonetic(mItem.word, mItem.phonetic)}
+                        </div>
+                        <div className="text-[11px] text-slate-600 truncate">
+                          = {mItem.meaning}
+                        </div>
+                      </div>
+                      <Volume2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    </div>
+                  ))}
+                </div>
               </div>
               <button
                 type="button"

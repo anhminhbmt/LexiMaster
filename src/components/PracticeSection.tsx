@@ -23,6 +23,7 @@ import { VocabItem, QuizMode, QuizQuestionType, QuizSessionStats } from '../type
 import { QuizPlayer } from './QuizPlayer.tsx';
 import { ALL_TOPIC_NAMES } from '../data/starterVocab.ts';
 import { speakWord } from '../utils/sound.ts';
+import { getPhonetic } from '../utils/phonetics.ts';
 
 interface PracticeSectionProps {
   vocabList: VocabItem[];
@@ -391,6 +392,9 @@ export const PracticeSection: React.FC<PracticeSectionProps> = ({
                       <div className="min-w-0">
                         <div className="font-bold text-xs text-slate-900 group-hover:text-indigo-600 truncate">
                           {item.word}
+                        </div>
+                        <div className="text-[11px] font-mono text-indigo-600/90 truncate">
+                          {getPhonetic(item.word, item.phonetic)}
                         </div>
                         <div className="text-[11px] text-slate-500 truncate">
                           {item.meaning}

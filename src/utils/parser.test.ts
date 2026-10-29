@@ -9,6 +9,7 @@ import {
   levenshteinDistance
 } from './parser.ts';
 import { CURRICULUM_UNITS, createInitialVocabList } from '../data/starterVocab.ts';
+import { getPhonetic } from './phonetics.ts';
 
 test('parseVocabText parses standard hyphen separated lines and UNIT topic headers', () => {
   const input = `
@@ -81,12 +82,68 @@ test('checkTypingMatch handles exact match, slash alternatives, and minor typos'
   assert.equal(mismatch.isClose, false);
 });
 
-test('CURRICULUM_UNITS and createInitialVocabList contain all 42 units starting from UNIT 3', () => {
+test('CURRICULUM_UNITS and createInitialVocabList contain all 42 units starting from UNIT 3 with IPA phonetics and all 13 new Unit 55 words', () => {
   assert.equal(CURRICULUM_UNITS.length, 42);
   const initialList = createInitialVocabList();
-  assert.ok(initialList.length >= 450);
+  assert.ok(initialList.length >= 460);
   assert.equal(initialList[0].word, 'Monday');
+  assert.equal(initialList[0].phonetic, '/ˈmʌn.deɪ/');
   assert.equal(initialList[0].topic, 'UNIT 3: DAYS, DATES & SEASONS (Ngày, Tháng & Mùa)');
+
+  // Verify every single item has a valid IPA phonetic string
+  for (const item of initialList) {
+    const phonetic = getPhonetic(item.word, item.phonetic);
+    assert.ok(phonetic.startsWith('/'), `Missing phonetic slash for ${item.word}: ${phonetic}`);
+    assert.ok(phonetic.length >= 3, `Phonetic too short for ${item.word}: ${phonetic}`);
+  }
+
+  // Verify the 13 new words in UNIT 54 & 55: HOLIDAY & HOTEL ROOM (Du lịch & Khách sạn)
+  const unit55Items = initialList.filter(
+    i => i.topic === 'UNIT 54 & 55: HOLIDAY & HOTEL ROOM (Du lịch & Khách sạn)'
+  );
+  assert.equal(unit55Items.length, 23);
+
+  const expectedUnit55Additions = [
+    { word: 'Bed', phonetic: '/bed/', meaning: 'Giường' },
+    { word: 'Single bed', phonetic: '/ˈsɪŋ.ɡəl bed/', meaning: 'Giường đơn' },
+    { word: 'Double bed', phonetic: '/ˈdʌb.əl bed/', meaning: 'Giường đôi' },
+    { word: 'King-size bed', phonetic: '/kɪŋ.saɪz bed/', meaning: 'Giường cỡ lớn (King)' },
+    { word: 'Queen-size bed', phonetic: '/kwiːn.saɪz bed/', meaning: 'Giường cỡ vừa (Queen)' },
+    { word: 'Pillow', phonetic: '/ˈpɪl.oʊ/', meaning: 'Gối' },
+    { word: 'Blanket', phonetic: '/ˈblæŋ.kɪt/', meaning: 'Chăn / mền' },
+    { word: 'Sheet', phonetic: '/ʃiːt/', meaning: 'Ga trải giường' },
+    { word: 'Wardrobe', phonetic: '/ˈwɔːr.droʊb/', meaning: 'Tủ quần áo' },
+    { word: 'Hanger', phonetic: '/ˈhæŋ.ər/', meaning: 'Móc treo quần áo' },
+    { word: 'Bedside table', phonetic: '/ˈbed.saɪd ˌteɪ.bəl/', meaning: 'Bàn cạnh giường / Tủ đầu giường' },
+    { word: 'Desk', phonetic: '/desk/', meaning: 'Bàn làm việc' },
+    { word: 'Chair', phonetic: '/tʃer/', meaning: 'Ghế' },
+  ];
+
+  for (const exp of expectedUnit55Additions) {
+    const found = unit55Items.find(x => x.word === exp.word);
+    assert.ok(found, `Expected ${exp.word} in Unit 55`);
+    assert.equal(found.meaning, exp.meaning);
+    assert.equal(found.phonetic, exp.phonetic);
+  }
+});
+
+test('parseVocabText extracts inline IPA phonetic transcriptions when present', () => {
+  const input = `
+    Bed /bed/: Giường
+    King-size bed /kɪŋ.saɪz bed/: Giường cỡ lớn (King)
+    Bedside table /ˈbed.saɪd ˌteɪ.bəl/: Bàn cạnh giường / Tủ đầu giường
+  `;
+  const parsed = parseVocabText(input);
+  assert.equal(parsed.length, 3);
+  assert.equal(parsed[0].word, 'Bed');
+  assert.equal(parsed[0].phonetic, '/bed/');
+  assert.equal(parsed[0].meaning, 'Giường');
+  assert.equal(parsed[1].word, 'King-size bed');
+  assert.equal(parsed[1].phonetic, '/kɪŋ.saɪz bed/');
+  assert.equal(parsed[1].meaning, 'Giường cỡ lớn (King)');
+  assert.equal(parsed[2].word, 'Bedside table');
+  assert.equal(parsed[2].phonetic, '/ˈbed.saɪd ˌteɪ.bəl/');
+  assert.equal(parsed[2].meaning, 'Bàn cạnh giường / Tủ đầu giường');
 });
 
 test('generateMultipleChoiceOptions picks distractors EXCLUSIVELY from user list', () => {

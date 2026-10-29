@@ -11,11 +11,11 @@ import type { VocabItem, QuizQuestionType, UnifiedQuizQuestion } from '../types.
  * - "word, meaning"
  * - "1. word - meaning" / "1) word : meaning" / "- word: meaning"
  */
-export function parseVocabText(rawText: string, defaultTopic?: string): Array<{ word: string; meaning: string; topic?: string }> {
+export function parseVocabText(rawText: string, defaultTopic?: string): Array<{ word: string; meaning: string; phonetic?: string; topic?: string }> {
   if (!rawText || typeof rawText !== 'string') return [];
 
   const lines = rawText.split(/\r?\n/);
-  const results: Array<{ word: string; meaning: string; topic?: string }> = [];
+  const results: Array<{ word: string; meaning: string; phonetic?: string; topic?: string }> = [];
   const seen = new Set<string>();
   let currentTopic = defaultTopic;
 
@@ -36,6 +36,7 @@ export function parseVocabText(rawText: string, defaultTopic?: string): Array<{ 
     // Detect separator: prioritize tab, " - ", " : ", " = ", then ":", "-", "=", ",", ";"
     let word = '';
     let meaning = '';
+    let phonetic: string | undefined = undefined;
 
     if (line.includes('\t')) {
       const parts = line.split('\t').map(s => s.trim()).filter(Boolean);
@@ -46,18 +47,26 @@ export function parseVocabText(rawText: string, defaultTopic?: string): Array<{ 
     } else {
       // Look for explicit delimiters with spaces or standard separators
       const delimiterRegex = /\s*(?:–|—|-|:|=|;)\s*|\t+/;
-      const match = line.search(delimiterRegex);
-      if (match !== -1) {
-        const parts = line.split(delimiterRegex);
-        if (parts.length >= 2) {
-          word = parts[0].trim();
-          meaning = parts.slice(1).join('; ').trim();
+      // If line has "Word /phonetic/: Meaning", split on the first colon/equals/dash outside /.../
+      const ipaColonMatch = line.match(/^(.+?)\s*(\/[^/]+\/)\s*(?::|=|–|—|-)\s*(.+)$/);
+      if (ipaColonMatch) {
+        word = ipaColonMatch[1].trim();
+        phonetic = ipaColonMatch[2].trim();
+        meaning = ipaColonMatch[3].trim();
+      } else {
+        const match = line.search(delimiterRegex);
+        if (match !== -1) {
+          const parts = line.split(delimiterRegex);
+          if (parts.length >= 2) {
+            word = parts[0].trim();
+            meaning = parts.slice(1).join('; ').trim();
+          }
+        } else if (line.includes(',')) {
+          // Fallback to comma if no dash or colon
+          const commaIdx = line.indexOf(',');
+          word = line.substring(0, commaIdx).trim();
+          meaning = line.substring(commaIdx + 1).trim();
         }
-      } else if (line.includes(',')) {
-        // Fallback to comma if no dash or colon
-        const commaIdx = line.indexOf(',');
-        word = line.substring(0, commaIdx).trim();
-        meaning = line.substring(commaIdx + 1).trim();
       }
     }
 
@@ -65,11 +74,25 @@ export function parseVocabText(rawText: string, defaultTopic?: string): Array<{ 
     word = word.replace(/^["']|["']$/g, '').trim();
     meaning = meaning.replace(/^["']|["']$/g, '').trim();
 
+    // Check if word still ends with inline /phonetic/
+    if (!phonetic) {
+      const inlineIpa = word.match(/^(.+?)\s+(\/[^/]+\/)$/);
+      if (inlineIpa) {
+        word = inlineIpa[1].trim();
+        phonetic = inlineIpa[2].trim();
+      }
+    }
+
     if (word && meaning) {
       const key = `${(currentTopic || '').toLowerCase()}:::${word.toLowerCase()}:::${meaning.toLowerCase()}`;
       if (!seen.has(key)) {
         seen.add(key);
-        results.push({ word, meaning, ...(currentTopic ? { topic: currentTopic } : {}) });
+        results.push({
+          word,
+          meaning,
+          ...(phonetic ? { phonetic } : {}),
+          ...(currentTopic ? { topic: currentTopic } : {}),
+        });
       }
     }
   }

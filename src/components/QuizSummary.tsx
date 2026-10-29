@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { QuizSessionStats, QuizResultItem, VocabItem, QuizMode } from '../types.ts';
 import { playCelebrationFanfare, speakWord } from '../utils/sound.ts';
+import { getPhonetic } from '../utils/phonetics.ts';
 
 interface QuizSummaryProps {
   stats: QuizSessionStats;
@@ -195,8 +196,11 @@ export const QuizSummary: React.FC<QuizSummaryProps> = ({
             {missedResults.map((res, idx) => (
               <div key={idx} className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 hover:bg-slate-50/60">
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="font-extrabold text-slate-900 text-base">{res.item.word}</span>
+                    <span className="text-xs font-mono text-indigo-600 font-medium">
+                      {getPhonetic(res.item.word, res.item.phonetic)}
+                    </span>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
                       {getQuestionTypeLabel(res.mode)}
                     </span>
@@ -252,8 +256,11 @@ export const QuizSummary: React.FC<QuizSummaryProps> = ({
                     ✓
                   </span>
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="font-bold text-slate-800 text-sm">{res.item.word}</span>
+                      <span className="text-xs font-mono text-indigo-600 font-medium">
+                        {getPhonetic(res.item.word, res.item.phonetic)}
+                      </span>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
                         {getQuestionTypeLabel(res.mode)}
                       </span>

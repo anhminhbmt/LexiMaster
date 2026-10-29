@@ -9,20 +9,21 @@ import { VocabInputSection } from './components/VocabInputSection.tsx';
 import { PracticeSection } from './components/PracticeSection.tsx';
 import { QuizSummary } from './components/QuizSummary.tsx';
 import { VocabItem, QuizMode, QuizSessionStats } from './types.ts';
-import { createInitialVocabList } from './data/starterVocab.ts';
+import { createInitialVocabList, syncWithCurriculumVocab } from './data/starterVocab.ts';
+import { Rocket, FileCode, Archive, FileText, CheckCircle2 } from 'lucide-react';
 
 const STORAGE_KEY_VOCAB = 'leximaster_vocab_items_v3';
 const STORAGE_KEY_SOUND = 'leximaster_sound_enabled';
 
 export default function App() {
-  // Initialize vocab from LocalStorage or curriculum starter kit (without Unit 1 & 2)
+  // Initialize vocab from LocalStorage (auto-synced with latest curriculum units) or curriculum starter kit
   const [vocabList, setVocabList] = useState<VocabItem[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_VOCAB);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          return syncWithCurriculumVocab(parsed);
         }
       }
     } catch {
@@ -93,6 +94,7 @@ export default function App() {
   };
 
   const [showExportModal, setShowExportModal] = useState(false);
+  const [isGeneratingZip, setIsGeneratingZip] = useState(false);
 
   const handleExportTxt = () => {
     if (vocabList.length === 0) {
@@ -113,20 +115,37 @@ export default function App() {
     setShowExportModal(false);
   };
 
-  const handleExportSingleHtml = () => {
+  const handleExportIndexHtmlForGitHub = () => {
     import('./utils/standaloneHtmlGenerator.ts').then(({ generateStandaloneSingleHtml }) => {
       const htmlContent = generateStandaloneSingleHtml(vocabList);
       const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `leximaster-app-standalone.html`;
+      link.download = `index.html`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      setShowExportModal(false);
     });
+  };
+
+  const handleExportGitHubPagesZip = async () => {
+    setIsGeneratingZip(true);
+    try {
+      const { generateGitHubPagesZip } = await import('./utils/standaloneHtmlGenerator.ts');
+      const blob = await generateGitHubPagesZip(vocabList);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `leximaster-github-pages.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } finally {
+      setIsGeneratingZip(false);
+    }
   };
 
   return (
@@ -147,47 +166,118 @@ export default function App() {
         onExportData={() => setShowExportModal(true)}
       />
 
-      {/* Export Modal */}
+      {/* GitHub Pages Deployment & Export Modal */}
       {showExportModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <h3 className="font-extrabold text-slate-900 text-base">Tùy chọn xuất dữ liệu</h3>
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-xl w-full shadow-2xl space-y-5 animate-in fade-in zoom-in-95 my-8">
+            <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center shrink-0">
+                  <Rocket className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-base sm:text-lg">
+                    Triển Khai Lên Web GitHub (GitHub Pages)
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Đầy đủ {vocabList.length} từ vựng (42 Chủ đề), âm thanh đọc & bài kiểm tra 4 dạng câu hỏi
+                  </p>
+                </div>
+              </div>
               <button
                 onClick={() => setShowExportModal(false)}
-                className="text-slate-400 hover:text-slate-700 text-sm font-bold p-1 rounded"
+                className="text-slate-400 hover:text-slate-700 text-sm font-bold p-1.5 rounded-lg hover:bg-slate-100"
               >
                 ✕
               </button>
             </div>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Bạn có thể xuất danh sách từ vựng dạng văn bản hoặc tải về một file HTML độc lập chứa toàn bộ ứng dụng và dữ liệu hiện tại để chạy offline.
-            </p>
+
+            {/* Option 1: Direct index.html or ZIP for GitHub web upload */}
             <div className="space-y-2.5">
+              <div className="text-xs font-extrabold uppercase tracking-wider text-indigo-600">
+                Cách 1: Kéo thả trực tiếp lên trang web GitHub.com (Nhanh nhất - 1 phút)
+              </div>
+
               <button
-                onClick={handleExportTxt}
-                className="w-full p-3.5 rounded-2xl border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/40 text-left transition-all flex items-center justify-between group"
+                onClick={handleExportIndexHtmlForGitHub}
+                className="w-full p-4 rounded-2xl border-2 border-indigo-600 bg-indigo-50/50 hover:bg-indigo-50 text-left transition-all flex items-center justify-between gap-3 group"
               >
-                <div>
-                  <div className="font-bold text-slate-900 text-xs sm:text-sm group-hover:text-indigo-600">
-                    Xuất file văn bản (.txt)
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+                    <FileCode className="w-4 h-4" />
                   </div>
-                  <div className="text-[11px] text-slate-500">Định dạng word: meaning cho Anki / Quizlet</div>
+                  <div>
+                    <div className="font-extrabold text-indigo-950 text-xs sm:text-sm group-hover:text-indigo-700">
+                      Tải file chuẩn <code className="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800">index.html</code> (Khuyên dùng)
+                    </div>
+                    <div className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
+                      1 file duy nhất chứa toàn bộ ứng dụng & 42 chủ đề từ vựng. Chỉ cần tải lên Repository GitHub và bật GitHub Pages là chạy ngay!
+                    </div>
+                  </div>
                 </div>
-                <span className="text-xs font-bold text-indigo-600">.txt →</span>
+                <span className="text-xs font-extrabold text-white bg-indigo-600 px-3 py-1.5 rounded-xl shrink-0">
+                  Tải index.html
+                </span>
               </button>
 
               <button
-                onClick={handleExportSingleHtml}
-                className="w-full p-3.5 rounded-2xl border-2 border-indigo-200 hover:border-indigo-600 bg-indigo-50/30 hover:bg-indigo-50 text-left transition-all flex items-center justify-between group"
+                onClick={handleExportGitHubPagesZip}
+                disabled={isGeneratingZip}
+                className="w-full p-3.5 rounded-2xl border border-slate-200 hover:border-indigo-500 hover:bg-slate-50 text-left transition-all flex items-center justify-between gap-3 group"
               >
-                <div>
-                  <div className="font-bold text-indigo-900 text-xs sm:text-sm group-hover:text-indigo-700">
-                    Xuất ứng dụng HTML độc lập (.html)
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
+                    <Archive className="w-4 h-4" />
                   </div>
-                  <div className="text-[11px] text-indigo-600/80">Chạy offline trên bất kỳ máy tính/điện thoại nào</div>
+                  <div>
+                    <div className="font-bold text-slate-900 text-xs sm:text-sm group-hover:text-indigo-600">
+                      {isGeneratingZip ? 'Đang đóng gói...' : 'Tải trọn bộ gói GitHub Pages (.zip)'}
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      Bao gồm <code className="font-mono">index.html</code>, <code className="font-mono">.nojekyll</code> và <code className="font-mono">README.md</code> hướng dẫn chi tiết
+                    </div>
+                  </div>
                 </div>
-                <span className="text-xs font-bold text-indigo-700">.html →</span>
+                <span className="text-xs font-bold text-indigo-600 shrink-0">.zip →</span>
+              </button>
+            </div>
+
+            {/* Step-by-step GitHub guide */}
+            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200/80 space-y-2 text-xs text-slate-600">
+              <div className="font-extrabold text-slate-800 flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Hướng dẫn 3 bước đưa lên GitHub Pages:</span>
+              </div>
+              <ol className="list-decimal list-inside space-y-1.5 pl-0.5 leading-relaxed">
+                <li>
+                  Vào <strong>github.com</strong> → tạo một Repository mới (đặt tên bất kỳ, chọn chế độ <strong>Public</strong>).
+                </li>
+                <li>
+                  Nhấn <strong>uploading an existing file</strong> → kéo thả file <code className="px-1.5 py-0.5 bg-white border rounded font-bold text-slate-800">index.html</code> vừa tải ở trên vào → bấm <strong>Commit changes</strong>.
+                </li>
+                <li>
+                  Vào mục <strong>Settings</strong> → <strong>Pages</strong> (menu trái) → dưới mục <strong>Branch</strong> chọn <code className="px-1 py-0.5 bg-white border rounded font-bold">main</code> rồi bấm <strong>Save</strong>. Đợi 1 phút là có link web!
+                </li>
+              </ol>
+              <div className="pt-1 text-[11px] text-slate-500 border-t border-slate-200/70">
+                💡 <strong>Nếu bạn đẩy toàn bộ mã nguồn React/Vite này lên GitHub:</strong> Dự án cũng đã được tích hợp sẵn <code className="font-mono">.github/workflows/deploy.yml</code> và <code className="font-mono">base: './'</code> để tự động build qua <strong>GitHub Actions</strong>.
+              </div>
+            </div>
+
+            {/* Export raw text */}
+            <div className="pt-1 border-t border-slate-100 flex items-center justify-between">
+              <button
+                onClick={handleExportTxt}
+                className="text-xs font-semibold text-slate-500 hover:text-indigo-600 flex items-center gap-1.5"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>Xuất danh sách từ vựng dạng văn bản (.txt)</span>
+              </button>
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs"
+              >
+                Đóng
               </button>
             </div>
           </div>
@@ -242,7 +332,7 @@ export default function App() {
           <div className="flex items-center gap-2 font-medium">
             <span className="font-bold text-slate-700">LexiMaster</span>
             <span>—</span>
-            <span>Ứng dụng học & ôn tập từ vựng tiếng Anh theo chủ đề</span>
+            <span>Ứng dụng học & ôn tập từ vựng tiếng Anh theo chủ đề (Sẵn sàng cho GitHub Pages)</span>
           </div>
           <div>
             Toàn bộ dữ liệu được lưu an toàn trong trình duyệt (LocalStorage).

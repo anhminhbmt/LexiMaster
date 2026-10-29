@@ -1,8 +1,9 @@
 import type { VocabItem } from '../types.ts';
+import { getPhonetic } from '../utils/phonetics.ts';
 
 export interface TopicUnitData {
   topic: string;
-  items: Array<{ word: string; meaning: string }>;
+  items: Array<{ word: string; meaning: string; phonetic?: string }>;
 }
 
 export const CURRICULUM_UNITS: TopicUnitData[] = [
@@ -732,6 +733,19 @@ export const CURRICULUM_UNITS: TopicUnitData[] = [
       { word: 'Air conditioning', meaning: 'Điều hòa không khí' },
       { word: 'Facility', meaning: 'Cơ sở vật chất' },
       { word: 'Single room', meaning: 'Phòng đơn' },
+      { word: 'Bed', meaning: 'Giường', phonetic: '/bed/' },
+      { word: 'Single bed', meaning: 'Giường đơn', phonetic: '/ˈsɪŋ.ɡəl bed/' },
+      { word: 'Double bed', meaning: 'Giường đôi', phonetic: '/ˈdʌb.əl bed/' },
+      { word: 'King-size bed', meaning: 'Giường cỡ lớn (King)', phonetic: '/kɪŋ.saɪz bed/' },
+      { word: 'Queen-size bed', meaning: 'Giường cỡ vừa (Queen)', phonetic: '/kwiːn.saɪz bed/' },
+      { word: 'Pillow', meaning: 'Gối', phonetic: '/ˈpɪl.oʊ/' },
+      { word: 'Blanket', meaning: 'Chăn / mền', phonetic: '/ˈblæŋ.kɪt/' },
+      { word: 'Sheet', meaning: 'Ga trải giường', phonetic: '/ʃiːt/' },
+      { word: 'Wardrobe', meaning: 'Tủ quần áo', phonetic: '/ˈwɔːr.droʊb/' },
+      { word: 'Hanger', meaning: 'Móc treo quần áo', phonetic: '/ˈhæŋ.ər/' },
+      { word: 'Bedside table', meaning: 'Bàn cạnh giường / Tủ đầu giường', phonetic: '/ˈbed.saɪd ˌteɪ.bəl/' },
+      { word: 'Desk', meaning: 'Bàn làm việc', phonetic: '/desk/' },
+      { word: 'Chair', meaning: 'Ghế', phonetic: '/tʃer/' },
     ],
   },
   {
@@ -803,6 +817,7 @@ export function createInitialVocabList(): VocabItem[] {
         id: `vocab-u-${counter}`,
         word: item.word,
         meaning: item.meaning,
+        phonetic: getPhonetic(item.word, item.phonetic),
         topic: unit.topic,
         createdAt: now - counter * 1000,
         stats: {
@@ -814,4 +829,43 @@ export function createInitialVocabList(): VocabItem[] {
   }
 
   return list;
+}
+
+/**
+ * Synchronizes a saved vocabulary list from LocalStorage with the latest curriculum items
+ * so newly added curriculum words & updated IPA phonetics appear automatically while preserving
+ * user stats and custom-added vocabulary.
+ */
+export function syncWithCurriculumVocab(savedList: VocabItem[]): VocabItem[] {
+  const curriculumList = createInitialVocabList();
+  const savedByKey = new Map<string, VocabItem>();
+  const curriculumKeys = new Set<string>();
+
+  for (const item of savedList) {
+    const key = `${(item.topic || '').trim().toLowerCase()}:::${item.word.trim().toLowerCase()}`;
+    savedByKey.set(key, item);
+  }
+
+  const mergedCurriculum = curriculumList.map(cItem => {
+    const key = `${(cItem.topic || '').trim().toLowerCase()}:::${cItem.word.trim().toLowerCase()}`;
+    curriculumKeys.add(key);
+    const existing = savedByKey.get(key);
+    if (existing) {
+      return {
+        ...cItem,
+        id: existing.id || cItem.id,
+        stats: existing.stats || cItem.stats,
+      };
+    }
+    return cItem;
+  });
+
+  const customItems = savedList.filter(item => {
+    const topicNorm = (item.topic || '').trim();
+    if (/^UNIT\s+[12]\b/i.test(topicNorm)) return false;
+    const key = `${topicNorm.toLowerCase()}:::${item.word.trim().toLowerCase()}`;
+    return !curriculumKeys.has(key);
+  });
+
+  return [...customItems, ...mergedCurriculum];
 }

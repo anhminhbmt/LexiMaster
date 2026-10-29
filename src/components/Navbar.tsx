@@ -108,12 +108,12 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           <button
             onClick={onExportData}
-            title="Xuất file từ vựng đã lưu"
-            aria-label="Xuất dữ liệu từ vựng"
-            className="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors hidden sm:flex items-center gap-1.5 text-xs font-medium"
+            title="Triển khai lên GitHub Pages hoặc Xuất file"
+            aria-label="Triển khai GitHub Pages & Xuất dữ liệu"
+            className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white transition-all flex items-center gap-1.5 text-xs font-bold shadow-xs"
           >
-            <Download className="w-4 h-4" />
-            <span>Xuất file</span>
+            <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+            <span className="hidden md:inline">Triển khai GitHub</span>
           </button>
         </div>
       </div>
